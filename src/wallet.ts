@@ -23,6 +23,13 @@ const generatePrivateKey = (): string => {
     return privateKey.toString(16);
 };
 
+//MY
+const getPublicKeyFromPrivateKey = (): string => {
+    const privateKey = generatePrivateKey();
+    const key = EC.keyFromPrivate(privateKey, 'hex');
+    return key.getPublic().encode('hex');
+};
+
 const initWallet = () => {
     // let's not override existing private keys
     if (existsSync(privateKeyLocation)) {
@@ -133,4 +140,4 @@ const createTransaction = (receiverAddress: string, amount: number, privateKey: 
 };
 
 export {createTransaction, getPublicFromWallet,
-    getPrivateFromWallet, getBalance, generatePrivateKey, initWallet, deleteWallet, findUnspentTxOuts};
+    getPrivateFromWallet, getBalance, generatePrivateKey, getPublicKeyFromPrivateKey, initWallet, deleteWallet, findUnspentTxOuts};
