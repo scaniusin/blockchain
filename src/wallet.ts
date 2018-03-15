@@ -23,13 +23,6 @@ const generatePrivateKey = (): string => {
     return privateKey.toString(16);
 };
 
-//MY
-const getPublicKeyFromPrivateKey = (): string => {
-    const privateKey = generatePrivateKey();
-    const key = EC.keyFromPrivate(privateKey, 'hex');
-    return key.getPublic().encode('hex');
-};
-
 const initWallet = () => {
     // let's not override existing private keys
     if (existsSync(privateKeyLocation)) {
@@ -111,7 +104,6 @@ const createTransaction = (receiverAddress: string, amount: number, privateKey: 
     console.log('txPool: %s', JSON.stringify(txPool));
     const myAddress: string = getPublicKey(privateKey);
     const myUnspentTxOutsA = unspentTxOuts.filter((uTxO: UnspentTxOut) => uTxO.address === myAddress);
-
     const myUnspentTxOuts = filterTxPoolTxs(myUnspentTxOutsA, txPool);
 
     // filter from unspentOutputs such inputs that are referenced in pool
@@ -139,5 +131,42 @@ const createTransaction = (receiverAddress: string, amount: number, privateKey: 
     return tx;
 };
 
+// -------------------------------------------------------------
+const createTransactionAdmin = (receiverAddress: string, amount: number, privateKey: string,
+                           unspentTxOuts: UnspentTxOut[], txPool: Transaction[]): Transaction => {
+
+    console.log('txPool: %s', JSON.stringify(txPool));
+    const myAddress: string = getPublicKey(privateKey);
+    const myUnspentTxOutsA = unspentTxOuts.filter((uTxO: UnspentTxOut) => uTxO.address === myAddress);
+
+    const myUnspentTxOuts = filterTxPoolTxs(myUnspentTxOutsA, txPool);
+
+    // filter from unspentOutputs such inputs that are referenced in pool
+    const {includedUnspentTxOuts, leftOverAmount} = findTxOutsForAmount(amount, myUnspentTxOuts);
+
+    const toUnsignedTxIn = (unspentTxOut: UnspentTxOut) => {
+        const txIn: TxIn = new TxIn();
+        txIn.txOutId = unspentTxOut.txOutId;
+        txIn.txOutIndex = unspentTxOut.txOutIndex;
+        return txIn;
+    };
+
+    const unsignedTxIns: TxIn[] = includedUnspentTxOuts.map(toUnsignedTxIn);
+
+    const tx: Transaction = new Transaction();
+    tx.txIns = unsignedTxIns;
+    tx.txOuts = createTxOuts(receiverAddress, myAddress, amount, leftOverAmount);
+    tx.id = getTransactionId(tx);
+
+    tx.txIns = tx.txIns.map((txIn: TxIn, index: number) => {
+        txIn.signature = signTxIn(tx, index, privateKey, unspentTxOuts);
+        return txIn;
+    });
+
+    return tx;
+};
+// -------------------------------------------------------------
+
 export {createTransaction, getPublicFromWallet,
-    getPrivateFromWallet, getBalance, generatePrivateKey, getPublicKeyFromPrivateKey, initWallet, deleteWallet, findUnspentTxOuts};
+    getPrivateFromWallet, getBalance, generatePrivateKey, initWallet, deleteWallet, findUnspentTxOuts,
+    createTransactionAdmin};

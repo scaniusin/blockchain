@@ -4,19 +4,19 @@ import * as cors from 'cors';
 import * as _ from 'lodash';
 import {
     Block, generateNextBlock, generatenextBlockWithTransaction, generateRawNextBlock, getAccountBalance,
-    getBlockchain, getMyUnspentTransactionOutputs, getUnspentTxOuts, sendTransaction
+    getBlockchain, getMyUnspentTransactionOutputs, getUnspentTxOuts, sendTransaction,
+    generatenextBlockWithTransactionAdmin, sendTransactionAdmin
 } from './blockchain';
 import {connectToPeers, getSockets, initP2PServer} from './p2p';
-import {UnspentTxOut} from './transaction';
+import {getPublicKey, UnspentTxOut} from './transaction';
 import {getTransactionPool} from './transactionPool';
-import {getPublicFromWallet, initWallet , generatePrivateKey, getPublicKeyFromPrivateKey} from './wallet';
+import {getPublicFromWallet, initWallet , generatePrivateKey } from './wallet';
 
 const httpPort: number = parseInt(process.env.HTTP_PORT) || 3001;
 const p2pPort: number = parseInt(process.env.P2P_PORT) || 6001;
 
 const initHttpServer = (myHttpPort: number) => {
     const app = express();
-    
     app.use(cors());
 
     app.use(bodyParser.json());
@@ -80,8 +80,8 @@ const initHttpServer = (myHttpPort: number) => {
         }
     });
 
-    app.get('/balance', (req, res, next) => {
-        const balance: number = getAccountBalance();
+    app.get('/balance/:address', (req, res, next) => {
+        const balance: number = getAccountBalance(req.params.address);
         res.json({'balance': balance});
     });
 
@@ -92,16 +92,46 @@ const initHttpServer = (myHttpPort: number) => {
 
     // MY
     app.get('/keypair', (req, res, next) => {
-        const private_key: string = generatePrivateKey();
-        const public_key: string = getPublicKeyFromPrivateKey();
-        res.json({'privateKey': private_key, 'publicKey': public_key});
+        const privateKey: string = generatePrivateKey();
+        const publicKey: string = getPublicKey(privateKey);
+        res.json({'privateKey': privateKey, 'publicKey': publicKey});
     });
 
     app.post('/mineTransaction', (req, res) => {
+        const toAddress = req.body.toAddress;
+        const amount = req.body.amount;
+        const privateKey = req.body.privateKey;
+        try {
+            const resp = generatenextBlockWithTransaction(toAddress, amount, privateKey);
+            res.send(resp);
+        } catch (e) {
+            console.log(e.message);
+            res.status(400).send(e.message);
+        }
+    });
+// ----------------------------------------------------------------
+    app.post('/mineTransactionAdmin', (req, res) => {
         const address = req.body.address;
         const amount = req.body.amount;
         try {
-            const resp = generatenextBlockWithTransaction(address, amount);
+            const resp = generatenextBlockWithTransactionAdmin(address, amount);
+            res.send(resp);
+        } catch (e) {
+            console.log(e.message);
+            res.status(400).send(e.message);
+        }
+    });
+// ----------------------------------------------------------------
+    app.post('/sendTransaction', (req, res) => {
+        try {
+            const privateKey = req.body.privateKey;
+            const toAddress = req.body.toAddress;
+            const amount = req.body.amount;
+
+            if (toAddress === undefined || amount === undefined || privateKey === undefined) {
+                throw Error('invalid addresses or amount');
+            }
+            const resp = sendTransaction(toAddress, amount, privateKey);
             res.send(resp);
         } catch (e) {
             console.log(e.message);
@@ -109,7 +139,8 @@ const initHttpServer = (myHttpPort: number) => {
         }
     });
 
-    app.post('/sendTransaction', (req, res) => {
+// ----------------------------------------------------------------
+    app.post('/sendTransactionAdmin', (req, res) => {
         try {
             const address = req.body.address;
             const amount = req.body.amount;
@@ -117,13 +148,14 @@ const initHttpServer = (myHttpPort: number) => {
             if (address === undefined || amount === undefined) {
                 throw Error('invalid address or amount');
             }
-            const resp = sendTransaction(address, amount);
+            const resp = sendTransactionAdmin(address, amount);
             res.send(resp);
         } catch (e) {
             console.log(e.message);
             res.status(400).send(e.message);
         }
     });
+// ----------------------------------------------------------------
 
     app.get('/transactionPool', (req, res, next) => {
         res.json(getTransactionPool());
