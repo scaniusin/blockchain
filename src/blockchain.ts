@@ -116,7 +116,8 @@ const generateNextBlock = () => {
     const blockData: Transaction[] = [coinbaseTx].concat(getTransactionPool());
     return generateRawNextBlock(blockData);
 };
-//mine a block every minute
+
+// mine a block every minute
 setInterval(() => {
     generateNextBlock();
 }, 600000);
