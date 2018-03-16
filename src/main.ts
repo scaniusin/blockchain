@@ -12,10 +12,10 @@ import {getPublicKey, UnspentTxOut} from './transaction';
 import {getTransactionPool} from './transactionPool';
 import {getPublicFromWallet, initWallet , generatePrivateKey } from './wallet';
 
-// const httpPort: number = parseInt(process.env.HTTP_PORT) || 3001;
-// const p2pPort: number = parseInt(process.env.P2P_PORT) || 6001;
-const httpPort: number = parseInt(process.env.HTTP_PORT);
-const p2pPort: number = parseInt(process.env.P2P_PORT);
+const httpPort: number = parseInt(process.env.HTTP_PORT) || 3001;
+const p2pPort: number = parseInt(process.env.P2P_PORT) || 6001;
+// const httpPort: number = parseInt(process.env.HTTP_PORT);
+// const p2pPort: number = parseInt(process.env.P2P_PORT);
 
 const initHttpServer = (myHttpPort: number) => {
     const app = express();
